@@ -54,14 +54,18 @@ public class Main {
         System.out.println(dir);
         break;
       case "cd":
-                String cd = parameter;
+        String cd = parameter;
         if (!cd.startsWith("/")) {
-          cd = dir + "/" + parameter;
+                      if (!cd.equals("~")) {
+            cd = dir + "/" + parameter;
+          } else {
+            cd = System.getenv("HOME");
+          }
         }
         if (Files.isDirectory(Path.of(cd))) {
           dir = Path.of(cd).normalize().toString();
         } else {
-                      System.out.println("cd: " + cd + ": No such file or directory");
+          System.out.println("cd: " + cd + ": No such file or directory");
         }
         break;
       default:
