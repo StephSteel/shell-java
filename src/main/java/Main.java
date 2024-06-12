@@ -9,10 +9,15 @@ public class Main {
             System.out.print("$ ");
             // Read the input from the user
             String input = scanner.nextLine();
-            
-            // For this stage, assume no command is recognized
-            // Print the error message for the unrecognized command
-            System.out.println(input + ": command not found");
+
+            // Check if the command is "exit 0"
+            if (input.equals("exit 0")) {
+                // Exit the program with status 0
+                System.exit(0);
+            } else {
+                // Handle unrecognized commands
+                System.out.println(input + ": command not found");
+            }
         }
     }
 }
