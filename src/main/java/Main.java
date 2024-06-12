@@ -1,91 +1,61 @@
+package com.urielsalis.codecrafters.shell;
+import com.urielsalis.codecrafters.shell.commands.Command;
+import com.urielsalis.codecrafters.shell.commands.EchoCommand;
+import com.urielsalis.codecrafters.shell.commands.ExitCommand;
+import com.urielsalis.codecrafters.shell.commands.ParsedCommand;
+import com.urielsalis.codecrafters.shell.commands.TypeCommand;
 import java.io.File;
-import java.io.IOException;
+import java.util.Optional;
 import java.util.Scanner;
-
-public class Main {
-    public static void main(String[] args) throws Exception {
-        Scanner scanner = new Scanner(System.in);
-
-        while (true) {
-            // Print the prompt
-            System.out.print("$ ");
-            // Read the input from the user
-            String input = scanner.nextLine();
-            // Split the input into command and arguments
-            String[] tokens = input.split(" ");
-
-            // Check if the command is "exit 0"
-            if (input.equals("exit 0")) {
-                // Exit the program with status 0
-                System.exit(0);
-            } else if (tokens[0].equals("echo")) {
-                // Handle the echo command
-                String textToEcho = input.substring(5);
-                System.out.println(textToEcho);
-            } else if (tokens[0].equals("type")) {
-                // Handle the type command
-                String command = tokens[1];
-                // Check if the command is a built-in command
-                if (command.equals("echo") || command.equals("exit") || command.equals("type")) {
-                    System.out.println(command + " is a shell builtin");
-                } else {
-                    // Check if the command is an executable in the PATH
-                    String pathEnv = System.getenv("PATH");
-                    boolean found = false;
-
-                    if (pathEnv != null) {
-                        String[] paths = pathEnv.split(":");
-                        for (String path : paths) {
-                            File file = new File(path, command);
-                            if (file.exists() && file.canExecute()) {
-                                System.out.println(command + " is " + file.getAbsolutePath());
-                                found = true;
-                                break;
-                            }
-                        }
-                    }
-
-                    // If the command is not found in the PATH
-                    if (!found) {
-                        System.out.println(command + ": not found");
-                    }
-                }
-            } else {
-                // Try to execute the command as an external program
-                String pathEnv = System.getenv("PATH");
-                boolean found = false;
-
-                if (pathEnv != null) {
-                    String[] paths = pathEnv.split(":");
-                    for (String path : paths) {
-                        File file = new File(path, tokens[0]);
-                        if (file.exists() && file.canExecute()) {
-                            // Execute the external command with arguments
-                            try {
-                                ProcessBuilder processBuilder = new ProcessBuilder(tokens);
-                                processBuilder.directory(new File(path));
-                                Process process = processBuilder.start();
-
-                                // Capture and print the output
-                                Scanner processOutputScanner = new Scanner(process.getInputStream());
-                                while (processOutputScanner.hasNextLine()) {
-                                    System.out.println(processOutputScanner.nextLine());
-                                }
-                                process.waitFor();
-                                found = true;
-                                break;
-                            } catch (IOException | InterruptedException e) {
-                                e.printStackTrace();
-                            }
-                        }
-                    }
-                }
-
-                // If the command is not found in the PATH
-                if (!found) {
-                    System.out.println(tokens[0] + ": command not found");
-                }
-            }
-        }
+public class Shell {
+  private final Command[] commands = new Command[] {
+      new ExitCommand(), new EchoCommand(), new TypeCommand(this)};
+  private final Scanner scanner = new Scanner(System.in);
+  private String prompt;
+  private File currentDirectory = new File("");
+  public Shell(String prompt) { this.prompt = prompt; }
+  public String read() { return scanner.nextLine(); }
+  public void eval(String input) {
+    final ParsedCommand parsedCommand = ParsedCommand.from(input);
+    for (Command command : commands) {
+      if (command.matches(parsedCommand.commandName())) {
+        command.execute(parsedCommand.args());
+        return;
+      }
     }
-}
+    final Optional<String> resolvedFullPath =
+        resolveCommandFullPath(parsedCommand.commandName());
+    resolvedFullPath.ifPresentOrElse(
+        fullPath
+        -> executeCommand(fullPath, parsedCommand.args()),
+        ()
+            -> System.out.println(parsedCommand.commandName() +
+                                  ": command not found"));
+  }
+  private void executeCommand(String fullPath, String args) {
+    try {
+      final Process process =
+          new ProcessBuilder(fullPath, args).inheritIO().start();
+      process.waitFor();
+    } catch (Exception e) {
+      System.out.println("Error executing command: " + e.getMessage());
+    }
+  }
+  public void print() { System.out.print(prompt); }
+  public Command[] getBuiltIns() { return commands; }
+  public Optional<String> resolveCommandFullPath(String args) {
+    final String[] paths = System.getenv("PATH").split(":");
+    File file = new File(args);
+    File file = new File(currentDirectory, args);
+    if (file.exists()) {
+      return Optional.of(file.getAbsolutePath());
+    }
+    for (String path : paths) {
+      file = new File(path + "/" + args);
+      if (file.exists()) {
+        return Optional.of(file.getAbsolutePath());
+      }
+    }
+    return Optional.empty();
+  }
+  public File getCurrentDirectory() { return currentDirectory; }
