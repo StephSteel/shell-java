@@ -16,9 +16,16 @@ public class Main {
                 System.exit(0);
             } else if (input.startsWith("echo ")) {
                 // Handle the echo command
-                // Extract and print the text following "echo "
                 String textToEcho = input.substring(5);
                 System.out.println(textToEcho);
+            } else if (input.startsWith("type ")) {
+                // Handle the type command
+                String command = input.substring(5);
+                if (command.equals("echo") || command.equals("exit") || command.equals("type")) {
+                    System.out.println(command + " is a shell builtin");
+                } else {
+                    System.out.println(command + ": not found");
+                }
             } else {
                 // Handle unrecognized commands
                 System.out.println(input + ": command not found");
