@@ -1,3 +1,4 @@
+import java.io.File;
 import java.util.Scanner;
 
 public class Main {
@@ -21,10 +22,31 @@ public class Main {
             } else if (input.startsWith("type ")) {
                 // Handle the type command
                 String command = input.substring(5);
+
+                // Check if the command is a built-in command
                 if (command.equals("echo") || command.equals("exit") || command.equals("type")) {
                     System.out.println(command + " is a shell builtin");
                 } else {
-                    System.out.println(command + ": not found");
+                    // Check if the command is an executable in the PATH
+                    String pathEnv = System.getenv("PATH");
+                    boolean found = false;
+                    
+                    if (pathEnv != null) {
+                        String[] paths = pathEnv.split(":");
+                        for (String path : paths) {
+                            File file = new File(path, command);
+                            if (file.exists() && file.canExecute()) {
+                                System.out.println(command + " is " + file.getAbsolutePath());
+                                found = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    // If the command is not found in the PATH
+                    if (!found) {
+                        System.out.println(command + ": not found");
+                    }
                 }
             } else {
                 // Handle unrecognized commands
